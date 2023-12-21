@@ -35,17 +35,16 @@ def analyze_coord(str):
     return np.array(x), np.array(y)
 
 
-def mask_single_img(labels_path, mask_imgs_path, pic_name):
+def mask_single_img(pic_name, labels_path, mask_imgs_path):
     imgs = np.zeros((1024, 1024))
     assert os.path.exists(os.path.join(labels_path, pic_name))
     with open(os.path.join(labels_path, pic_name), 'r') as f:
         strlines = f.readlines()
-        # print(strlines)
         for str in strlines:
             x, y = analyze_coord(str)
             G(imgs, x, y)
 
-    img_save = Image.fromarray(imgs)
+    img_save = Image.fromarray(imgs.squeeze().astype(np.uint8))
     img_save.save(os.path.join(mask_imgs_path, pic_name.replace('.txt', '.jpg')))
 
 
@@ -60,7 +59,6 @@ def main():
     labels_path = os.path.join(base_path, 'labelTxt')
     pic_name_list = os.listdir(labels_path)
     print("Fount {} Labels".format(len(pic_name_list)))
-    # for pic_name in pic_name_list:
     worker = partial(mask_single_img, labels_path=labels_path, mask_imgs_path=mask_imgs_path)
     pool.map(worker, pic_name_list)
 
