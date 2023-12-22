@@ -105,13 +105,27 @@ def read_split_data(root: str, multilabel: bool):
     val_images_path.sort()
     val_images_label = read_label(val_label_path, class_indices, multilabel)                    # 存储验证集图片对应索引信息
 
+    train_mask_img_path = os.path.join(train_path, "mask_images")   # mask
+    train_mask_images_path = [os.path.join(train_mask_img_path, i) for i in os.listdir(train_mask_img_path)]
+    train_mask_images_path.sort()
+
+    val_mask_img_path = os.path.join(val_path, "mask_images")
+    val_mask_images_path = [os.path.join(val_mask_img_path, i) for i in os.listdir(val_mask_img_path)]
+    val_mask_images_path.sort()
+
+
+
     # print("{} images were found in the dataset.".format(sum(every_class_num)))
     print("{} images for training.".format(len(train_images_path)))
     print("{} images for validation.".format(len(val_images_path)))
+    print("{} images of tarin mask.".format(len(train_mask_images_path)))
+    print("{} images of val mask.".format(len(val_mask_images_path)))
     assert len(train_images_path) > 0, "number of training images must greater than 0."
     assert len(val_images_path) > 0, "number of validation images must greater than 0."
+    assert len(train_mask_images_path) > 0, "number of train mask images must greater than 0."
+    assert len(val_mask_images_path) > 0, "number of val mask images must greater than 0."
 
-    return train_images_path, train_images_label, val_images_path, val_images_label
+    return train_images_path, train_images_label, val_images_path, val_images_label, train_mask_images_path, val_mask_images_path
 
 
 def plot_data_loader_image(data_loader):
@@ -182,17 +196,17 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, warmup, multil
     sample_num = 0
     data_loader = tqdm(data_loader, file=sys.stdout)
     for step, data in enumerate(data_loader):
-        images, labels = data
+        images, labels, masks = data
         sample_num += images.shape[0]
         # 混合精度训练上下文管理器，如果在CPU环境中不起任何作用
         with amp.autocast(enabled=scaler is not None):
-            pred = model(images.to(device))
+            pred, output = model(images.to(device))
             # if multilabel:
             m_pred = m(pred)
             pred_classes = torch.round(m_pred)
             if not multilabel:
                 labels = labels.unsqueeze(dim=1)
-            loss = focal_loss(pred, labels.to(device))
+            loss = focal_loss(pred, labels.to(device)) + loss_function(output, masks.to(device)).sum() / output.size(0)
         accu_num += torch.eq(pred_classes, labels.to(device)).sum()
 
         # backward
@@ -234,15 +248,15 @@ def evaluate(model, data_loader, device, epoch, multilabel):
     sample_num = 0
     data_loader = tqdm(data_loader, file=sys.stdout)
     for step, data in enumerate(data_loader):
-        images, labels = data
+        images, labels, masks = data
         sample_num += images.shape[0]
 
-        pred = model(images.to(device))
+        pred, output = model(images.to(device))
         m_pred = m(pred)
         pred_classes = torch.round(m_pred)
         if not multilabel:
             labels = labels.unsqueeze(dim=1)
-        loss = focal_loss(pred, labels.to(device))
+        loss = focal_loss(pred, labels.to(device)) + loss_function(output, masks.to(device)).sum() / output.size(0)
         accu_num += torch.eq(pred_classes, labels.to(device)).sum()
         accu_loss += loss.detach()
 

@@ -259,7 +259,11 @@ class EfficientNetV2(nn.Module):
         total_blocks = sum([i[0] for i in model_cnf])
         block_id = 0
         blocks = []
-        for cnf in model_cnf:
+
+        # 用来存储返回特征层的网络
+        self.fpn_return = []
+        fpn_return_layer = [1, 2, 3, 5]
+        for idx, cnf in enumerate(model_cnf):
             repeats = cnf[0]
             op = FusedMBConv if cnf[-2] == 0 else MBConv
             for i in range(repeats):
@@ -272,7 +276,16 @@ class EfficientNetV2(nn.Module):
                                  drop_rate=drop_connect_rate * block_id / total_blocks,
                                  norm_layer=norm_layer))
                 block_id += 1
+            if idx in fpn_return_layer:
+                self.fpn_return.append(blocks)
+                blocks = []
+        self.fpn_return_1 = nn.Sequential(*self.fpn_return[0])
+        self.fpn_return_2 = nn.Sequential(*self.fpn_return[1])
+        self.fpn_return_3 = nn.Sequential(*self.fpn_return[2])
+        self.fpn_return_5 = nn.Sequential(*self.fpn_return[3])
+
         self.blocks = nn.Sequential(*blocks)
+
 
         head_input_c = model_cnf[-1][-3]
         head = OrderedDict()
@@ -304,12 +317,16 @@ class EfficientNetV2(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.zeros_(m.bias)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> tuple[Tensor, list]:
         x = self.stem(x)
-        x = self.blocks(x)
+        out1 = self.fpn_return_1(x)
+        out2 = self.fpn_return_2(out1)
+        out3 = self.fpn_return_3(out2)
+        out4 = self.fpn_return_5(out3)
+        x = self.blocks(out4)
         x = self.head(x)
 
-        return x
+        return x, [out1, out2, out3, out4]
 
 
 def efficientnetv2_s(num_classes: int = 1000):

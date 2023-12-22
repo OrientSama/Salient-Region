@@ -52,7 +52,7 @@ def main():
     # 进程数量
     num_process = 20
     pool = Pool(num_process)
-    base_path = '/home/ubuntu/Dataset/DOTA-Split/trainSplit-1024'
+    base_path = '/home/ubuntu/Dataset/DOTA-Split/valSplit-1024'
     mask_imgs_path = os.path.join(base_path, 'mask_images')
     if not os.path.exists(mask_imgs_path):
         os.mkdir(mask_imgs_path)
