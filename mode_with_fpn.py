@@ -9,6 +9,7 @@ class ModelWithFPN(nn.Module):
     def __init__(self, num_classes: int = 1000):
         super().__init__()
         self.model = create_model(num_classes=num_classes)
+        # FIXME 直接使用倍率放大，对于某些尺寸的图片 会导致出错， 目前512, 1024 可以
         self.conv_up_4 = nn.Sequential(nn.Conv2d(304, 160, kernel_size=1, bias=False),
                                        nn.BatchNorm2d(num_features=160, eps=1e-3, momentum=0.1),
                                        nn.Upsample(scale_factor=2, mode='bilinear'))  # 160 32 32

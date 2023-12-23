@@ -46,7 +46,7 @@ def main(args):
         multi_label)
 
     img_size = {"s": [300, 384],  # train_size, val_size
-                "m": [512, 600],
+                "m": [512, 512],
                 "l": [384, 480]}
     num_model = "m"
 
@@ -201,11 +201,11 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--num_classes', type=int, default=1)
-    parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--batch-size', type=int, default=8)
+    parser.add_argument('--epochs', type=int, default=200)
+    parser.add_argument('--batch-size', type=int, default=12)
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--lrf', type=float, default=0.01)
-    parser.add_argument("--eval-interval", default=1, type=int, help="validation interval default 10 Epochs")
+    parser.add_argument("--eval-interval", default=10, type=int, help="validation interval default 10 Epochs")
     parser.add_argument('--resume', default='', help='resume from checkpoint')
     parser.add_argument('--weights_path', type=str, default='')
     # 是否使用混合精度训练(需要GPU支持混合精度)

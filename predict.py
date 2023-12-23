@@ -14,6 +14,7 @@ import utils
 from tqdm import tqdm
 from my_dataset import MyDataSet
 from sklearn.metrics import roc_curve, precision_recall_curve
+from mode_with_fpn import ModelWithFPN
 
 
 def main(args):
@@ -32,25 +33,17 @@ def main(args):
 
     img_size = {"s": [300, 384],  # train_size, val_size
                 # "m": [384, 480],
-                "m": [512, 600],
+                "m": [512, 512],
                 "l": [384, 480]}
     num_model = args.size
 
-    data_transform = transforms.Compose(
-        [transforms.Resize(img_size[num_model][1]),
-         transforms.CenterCrop(img_size[num_model][1]),
-         transforms.ToTensor(),
-         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])
+    data_transform = {
+        "train": transforms.Compose([transforms.RandomResizedCrop(img_size[num_model][0], antialias=True),  # antialias=True 打开抗锯齿
+                                     transforms.RandomHorizontalFlip()]),
+        "val": transforms.Compose([transforms.Resize(img_size[num_model][1], antialias=True),
+                                   transforms.CenterCrop(img_size[num_model][1])]),
+        "norm": transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])}
 
-    # load image
-    # img_path = r"D:\project\Data\valSplit-1024\images\P0003__1__0___0.png"
-
-    # img = Image.open(img_path)
-    # plt.imshow(img)
-    # # [N, C, H, W]
-    # img = data_transform(img)
-    # expand batch dimension
-    # img = torch.unsqueeze(img, dim=0)
 
     # read class_indict
     json_path = './class_indices.json'
@@ -59,13 +52,15 @@ def main(args):
     with open(json_path, "r") as f:
         class_indices = json.load(f)
 
-    multilabel = args.num_classes > 2
-    _, _, val_images_path, val_images_label = utils.read_split_data(r"/home/ubuntu/Dataset/DOTA-Split", multilabel)
+    multilabel = args.num_classes > 1
+    _, _, val_images_path, val_images_label, _, val_mask_images_path = utils.read_split_data(r"/home/ubuntu/Dataset/DOTA-Split", multilabel)
 
     # 实例化验证数据集
     val_dataset = MyDataSet(images_path=val_images_path,
                             images_class=val_images_label,
-                            transform=data_transform)
+                            mask_images_path=val_mask_images_path,
+                            transform=data_transform["val"],
+                            norm=data_transform["norm"])
     batch_size = 48
     nw = min([os.cpu_count(), batch_size if batch_size > 1 else 0, 20])  # number of workers
 
@@ -77,10 +72,11 @@ def main(args):
                                              collate_fn=val_dataset.collate_fn)
 
     # create model
-    model = create_model(num_classes=args.num_classes).to(device)
+    model_weight_path = "/home/ubuntu/PycharmProjects/DeepLearn/Test3_Salient_Region/save_weights/model_180_best.pth"
+    model = ModelWithFPN(num_classes=args.num_classes).to(device)
     # load model weights
-    model_weight_path = args.weights
-    model.load_state_dict(torch.load(model_weight_path, map_location=device))
+    model.load_state_dict(torch.load(model_weight_path, map_location=device)['model'])
+
     m = torch.nn.Sigmoid()
     model.eval()
     predicts = torch.tensor([]).to(device)
@@ -89,10 +85,10 @@ def main(args):
         sample_num = 0
         data_loader = tqdm(val_loader, file=sys.stdout)
         for step, data in enumerate(data_loader):
-            images, labels = data
+            images, labels, _ = data
             sample_num += images.shape[0]
 
-            pred = model(images.to(device))
+            pred, _ = model(images.to(device))
             # 存储 原始的预测数据， 之后计算 每一项 的最优 阈值
             # if multilabel:
             pred = m(pred)
@@ -169,15 +165,15 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_classes', type=int, default=15)
+    parser.add_argument('--num_classes', type=int, default=1)
     parser.add_argument('--weights', type=str,
-                        default=r"/home/ubuntu/PycharmProjects/DeepLearn/Test2_MultiLabel/15c_10blocks_Finetune-2023-12-10-15:32/15-F-pre_efficientnetv2-m-model-5.pth",
+                        default=r"",
                         help='initial weights path')
     parser.add_argument('--size', type=str,
                         default="m",
                         help='model size')
     parser.add_argument('--threshold', type=float,
-                        default=0.5,
+                        default=None,
                         help='if None means that auto compute the best threshold, else use given data as threshold')
     opt = parser.parse_args()
     main(opt)
