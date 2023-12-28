@@ -77,9 +77,8 @@ def read_label(root: str, class_indices: dict, multilabel: bool):
 def read_split_data(root: str, multilabel: bool):
     # random.seed(0)  # 保证随机结果可复现
     assert os.path.exists(root), "dataset root: {} does not exist.".format(root)
-    size = 1024
-    train_path = os.path.join(root, "trainSplit-{}".format(size))
-    val_path = os.path.join(root, "valSplit-{}".format(size))
+    train_path = os.path.join(root, "train")
+    val_path = os.path.join(root, "val")
     # 遍历文件夹，一个文件夹对应一个类别
 
     dota_class = ['plane', 'baseball-diamond', 'bridge', 'ground-track-field', 'small-vehicle', 'large-vehicle', 'ship',
@@ -94,13 +93,13 @@ def read_split_data(root: str, multilabel: bool):
     # supported = [".jpg", ".JPG", ".png", ".PNG"]  # 支持的文件后缀类型
     # 遍历每个文件夹下的文件
     train_img_path = os.path.join(train_path, "images")
-    train_label_path = os.path.join(train_path, "labelTxt")
+    train_label_path = os.path.join(train_path, "annfiles")
     train_images_path = [os.path.join(train_img_path, i) for i in os.listdir(train_img_path)]   # 存储训练集的所有图片路径
     train_images_path.sort()
     train_images_label = read_label(train_label_path, class_indices, multilabel)                # 存储训练集图片对应索引信息
 
     val_img_path = os.path.join(val_path, "images")
-    val_label_path = os.path.join(val_path, "labelTxt")
+    val_label_path = os.path.join(val_path, "annfiles")
     val_images_path = [os.path.join(val_img_path, i) for i in os.listdir(val_img_path)]         # 存储验证集的所有图片路径
     val_images_path.sort()
     val_images_label = read_label(val_label_path, class_indices, multilabel)                    # 存储验证集图片对应索引信息

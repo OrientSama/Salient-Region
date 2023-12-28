@@ -168,7 +168,7 @@ def main(args):
         if args.amp:
             scaler.load_state_dict(checkpoint["scaler"])
 
-    for epoch in range(0, args.epochs):
+    for epoch in range(args.start_epoch, args.epochs):
         # train
         train_loss, train_acc = train_one_epoch(model=model, optimizer=optimizer, data_loader=train_loader,
                                                 device=device,
@@ -206,7 +206,9 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--lrf', type=float, default=0.01)
     parser.add_argument("--eval-interval", default=10, type=int, help="validation interval default 10 Epochs")
-    parser.add_argument('--resume', default='', help='resume from checkpoint')
+    parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
+                        help='start epoch')
+    parser.add_argument('--resume', default='/home/ubuntu/PycharmProjects/DeepLearn/Test3_Salient_Region/save_weights/model_69.pth', help='resume from checkpoint')
     parser.add_argument('--weights_path', type=str, default='')
     # 是否使用混合精度训练(需要GPU支持混合精度)
     parser.add_argument("--amp", default=False, help="Use torch.cuda.amp for mixed precision training")
@@ -214,7 +216,7 @@ if __name__ == '__main__':
     # 数据集所在根目录
     # https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz
     parser.add_argument('--data-path', type=str,
-                        default=r"/home/ubuntu/Dataset/DOTA-Split")
+                        default=r"/home/ubuntu/Dataset/DOTA-Split-mmr")
 
     # download model weights
     # 链接: https://pan.baidu.com/s/1uZX36rvrfEss-JGj4yfzbQ  密码: 5gu1

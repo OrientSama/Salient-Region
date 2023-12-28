@@ -53,7 +53,7 @@ def main(args):
         class_indices = json.load(f)
 
     multilabel = args.num_classes > 1
-    _, _, val_images_path, val_images_label, _, val_mask_images_path = utils.read_split_data(r"/home/ubuntu/Dataset/DOTA-Split", multilabel)
+    _, _, val_images_path, val_images_label, _, val_mask_images_path = utils.read_split_data(r"/home/ubuntu/Dataset/DOTA-Split-mmr", multilabel)
 
     # 实例化验证数据集
     val_dataset = MyDataSet(images_path=val_images_path,
@@ -72,7 +72,7 @@ def main(args):
                                              collate_fn=val_dataset.collate_fn)
 
     # create model
-    model_weight_path = "/home/ubuntu/PycharmProjects/DeepLearn/Test3_Salient_Region/save_weights/model_180_best.pth"
+    model_weight_path = "/home/ubuntu/PycharmProjects/DeepLearn/Test3_Salient_Region/save_weights/model_188*.pth"
     model = ModelWithFPN(num_classes=args.num_classes).to(device)
     # load model weights
     model.load_state_dict(torch.load(model_weight_path, map_location=device)['model'])
@@ -143,6 +143,12 @@ def main(args):
             best_threshold = thresholds[idx]
         else:
             best_threshold = args.threshold
+
+        # 保存 中间文件
+        np.save('NumpyFiles/predicts.npy', predicts)
+        np.save('NumpyFiles/val_img_path.npy', np.array(val_images_path))
+        with open('NumpyFiles/best_threshold.txt', 'w') as f:
+            f.write('{}'.format(best_threshold))
 
         predicts_num = (predicts > best_threshold).astype(float)
         confusion_matrix = pd.crosstab(labels_num.flatten(), predicts_num.flatten(), margins=True)

@@ -12,14 +12,14 @@ from PIL import Image
 
 # Generate a mask on the image
 def G(imgs, x, y):
-    bx, by = x.mean(), y.mean()
+    # bx, by = x.mean(), y.mean()
     coord_list = [(x, y) for x, y in zip(x, y)]
     polygon = Polygon(coord_list)
-    point_0, point_1, point_3 = Point(coord_list[0]), Point(coord_list[1]), Point(coord_list[3])
-    box_w, box_h = point_0.distance(point_1), point_0.distance(point_3)
+    # point_0, point_1, point_3 = Point(coord_list[0]), Point(coord_list[1]), Point(coord_list[3])
+    # box_w, box_h = point_0.distance(point_1), point_0.distance(point_3)
 
-    for p_x in range(x.min().astype(int), x.max().astype(int) + 1):  # 列
-        for p_y in range(y.min().astype(int), y.max().astype(int) + 1):  # 行
+    for p_x in range(max(0, x.min().astype(int)), min(1024, x.max().astype(int) + 1)):  # 列
+        for p_y in range(max(0, y.min().astype(int)), min(1024, y.max().astype(int) + 1)):  # 行
             point = Point(p_x, p_y)
             if polygon.contains(point):
                 # imgs[0][p_y][p_x] = Gaussian(p_x, p_y, bx, by, 2, 0.001* box_w, 1, 0.001* box_h)
@@ -50,15 +50,15 @@ def mask_single_img(pic_name, labels_path, mask_imgs_path):
 
 def main():
     # 进程数量
-    num_process = 20
+    num_process = 24
     pool = Pool(num_process)
-    base_path = '/home/ubuntu/Dataset/DOTA-Split/valSplit-1024'
+    base_path = '/home/ubuntu/Dataset/DOTA-Split-mmr/val'
     mask_imgs_path = os.path.join(base_path, 'mask_images')
     if not os.path.exists(mask_imgs_path):
         os.mkdir(mask_imgs_path)
-    labels_path = os.path.join(base_path, 'labelTxt')
+    labels_path = os.path.join(base_path, 'annfiles')
     pic_name_list = os.listdir(labels_path)
-    print("Fount {} Labels".format(len(pic_name_list)))
+    print("Found {} Labels".format(len(pic_name_list)))
     worker = partial(mask_single_img, labels_path=labels_path, mask_imgs_path=mask_imgs_path)
     pool.map(worker, pic_name_list)
 
