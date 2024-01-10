@@ -199,13 +199,16 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, warmup, multil
         sample_num += images.shape[0]
         # 混合精度训练上下文管理器，如果在CPU环境中不起任何作用
         with amp.autocast(enabled=scaler is not None):
-            pred, output = model(images.to(device))
+            # model with FPN
+            # pred, output = model(images.to(device))
+            # resnet50
+            pred = model(images.to(device))
             # if multilabel:
             m_pred = m(pred)
             pred_classes = torch.round(m_pred)
             if not multilabel:
                 labels = labels.unsqueeze(dim=1)
-            loss = focal_loss(pred, labels.to(device)) + loss_function(output, masks.to(device)).sum() / output.size(0)
+            loss = focal_loss(pred, labels.to(device))  # + loss_function(output, masks.to(device)).sum() / output.size(0)
         accu_num += torch.eq(pred_classes, labels.to(device)).sum()
 
         # backward
@@ -250,12 +253,15 @@ def evaluate(model, data_loader, device, epoch, multilabel):
         images, labels, masks = data
         sample_num += images.shape[0]
 
-        pred, output = model(images.to(device))
+        # model with FPN
+        # pred, output = model(images.to(device))
+        # resnet50
+        pred = model(images.to(device))
         m_pred = m(pred)
         pred_classes = torch.round(m_pred)
         if not multilabel:
             labels = labels.unsqueeze(dim=1)
-        loss = focal_loss(pred, labels.to(device)) + loss_function(output, masks.to(device)).sum() / output.size(0)
+        loss = focal_loss(pred, labels.to(device))  # + loss_function(output, masks.to(device)).sum() / output.size(0)
         accu_num += torch.eq(pred_classes, labels.to(device)).sum()
         accu_loss += loss.detach()
 

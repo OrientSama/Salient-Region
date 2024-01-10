@@ -15,6 +15,7 @@ from tqdm import tqdm
 from my_dataset import MyDataSet
 from sklearn.metrics import roc_curve, precision_recall_curve
 from mode_with_fpn import ModelWithFPN
+from resnet import resnet50
 
 
 def main(args):
@@ -61,7 +62,7 @@ def main(args):
                             mask_images_path=val_mask_images_path,
                             transform=data_transform["val"],
                             norm=data_transform["norm"])
-    batch_size = 48
+    batch_size = 64
     nw = min([os.cpu_count(), batch_size if batch_size > 1 else 0, 20])  # number of workers
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
@@ -72,8 +73,11 @@ def main(args):
                                              collate_fn=val_dataset.collate_fn)
 
     # create model
-    model_weight_path = "/home/ubuntu/PycharmProjects/DeepLearn/Test3_Salient_Region/save_weights/model_188*.pth"
-    model = ModelWithFPN(num_classes=args.num_classes).to(device)
+    model_weight_path = args.weights
+    # efficient net FPN
+    # model = ModelWithFPN(num_classes=args.num_classes).to(device)
+    # resnet 50
+    model = resnet50(num_classes=args.num_classes).to(device)
     # load model weights
     model.load_state_dict(torch.load(model_weight_path, map_location=device)['model'])
 
@@ -88,7 +92,7 @@ def main(args):
             images, labels, _ = data
             sample_num += images.shape[0]
 
-            pred, _ = model(images.to(device))
+            pred = model(images.to(device))
             # 存储 原始的预测数据， 之后计算 每一项 的最优 阈值
             # if multilabel:
             pred = m(pred)
@@ -164,7 +168,7 @@ def main(args):
     plt.ylabel('True Value', fontsize=14)
     plt.xlabel('Predict Value', fontsize=14)
     # 保存 图片
-    plt.savefig(fname=model_weight_path.split('/')[-1].split('.')[0] + "-{}Class-{}.png".format(args.num_classes, args.threshold),
+    plt.savefig(fname=model_weight_path.split('/')[-1].split('.')[0] + "-resnet50-{}Class-{}.png".format(args.num_classes, args.threshold),
                 bbox_inches='tight')
     # plt.show()
 
@@ -173,7 +177,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--num_classes', type=int, default=1)
     parser.add_argument('--weights', type=str,
-                        default=r"",
+                        default=r"/home/ubuntu/PycharmProjects/DeepLearn/Test3_Salient_Region/save_weights/resnet50_model_35.pth",
                         help='initial weights path')
     parser.add_argument('--size', type=str,
                         default="m",

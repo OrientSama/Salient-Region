@@ -10,6 +10,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 
 from model import efficientnetv2_m as create_model
 from mode_with_fpn import ModelWithFPN
+from resnet import resnet50
 from my_dataset import MyDataSet
 from utils import read_split_data, train_one_epoch, evaluate
 import datetime
@@ -51,7 +52,7 @@ def main(args):
     num_model = "m"
 
     data_transform = {
-        "train": transforms.Compose([transforms.RandomResizedCrop(img_size[num_model][0], antialias=True),   # antialias=True 打开抗锯齿
+        "train": transforms.Compose([transforms.RandomResizedCrop(img_size[num_model][0], antialias=True),  # antialias=True 打开抗锯齿
                                      transforms.RandomHorizontalFlip()]),
         "val": transforms.Compose([transforms.Resize(img_size[num_model][1], antialias=True),
                                    transforms.CenterCrop(img_size[num_model][1])]),
@@ -91,29 +92,25 @@ def main(args):
     # 如果存在预训练权重则载入
     # model = create_model(num_classes=args.num_classes).to(device)
     # model with FPN
-    model = ModelWithFPN(num_classes=args.num_classes).to(device)
+    # model = ModelWithFPN(num_classes=args.num_classes).to(device)
+    # ResNet50
+    model = resnet50(num_classes=args.num_classes).to(device)
 
     # 最多训练 head 和 block 的后10层
     # li = [str(n) for n in range(3, 57)] + ['head']
-    #
-    # # head层的名字、参数
-    # head_para = [k for k, v in model.named_parameters() if 'head' in k]
-    # headpara = [p for n, p in model.named_parameters() if p.requires_grad and 'head' in n]
-    # # 后10层 block层的名字、参数
-    # block_para = [k for k, v in model.named_parameters() if k.split('.')[1] in li]
-    # basepara = [p for n, p in model.named_parameters() if p.requires_grad and n.split('.')[1] in li]
 
-    # pg = [p for p in model.parameters() if p.requires_grad]
-    # optimizer = optim.SGD(pg, lr=args.lr, momentum=0.9, weight_decay=1E-4)
+    block_para = [v for k, v in model.named_parameters() if 'fc' not in k]
 
     # 分层控制学习率
     # optimizer = optim.AdamW([{'params': basepara}, {'params': headpara, 'lr': args.lr * 10}], lr=args.lr, weight_decay=1e-4)
-    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
+    # optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=1e-4, momentum=0.9)
+    optimizer = optim.SGD([{'params': model.fc.parameters(), 'lr': args.lr * 10}, {'params': block_para}], lr=args.lr, weight_decay=1e-4,
+                          momentum=0.9)
     scaler = torch.cuda.amp.GradScaler() if opt.amp else None
 
     if args.weights != "":
         if os.path.exists(args.weights):
-            weights_dict = torch.load(args.weights, map_location=device)
+            weights_dict = torch.load(args.weights, map_location='cpu')
             load_weights_dict = {k: v for k, v in weights_dict.items()
                                  if model.state_dict()[k].numel() == v.numel()}
             print(model.load_state_dict(load_weights_dict, strict=False))
@@ -201,14 +198,15 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--num_classes', type=int, default=1)
-    parser.add_argument('--epochs', type=int, default=200)
-    parser.add_argument('--batch-size', type=int, default=12)
-    parser.add_argument('--lr', type=float, default=0.001)
+    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--batch-size', type=int, default=32)
+    parser.add_argument('--lr', type=float, default=0.002)
     parser.add_argument('--lrf', type=float, default=0.01)
-    parser.add_argument("--eval-interval", default=10, type=int, help="validation interval default 10 Epochs")
+    parser.add_argument("--eval-interval", default=5, type=int, help="validation interval default 10 Epochs")
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='start epoch')
-    parser.add_argument('--resume', default='/home/ubuntu/PycharmProjects/DeepLearn/Test3_Salient_Region/save_weights/model_69.pth', help='resume from checkpoint')
+    parser.add_argument('--resume', default='/home/ubuntu/PycharmProjects/DeepLearn/Test3_Salient_Region/save_weights/model_1.pth',
+                        help='resume from checkpoint')
     parser.add_argument('--weights_path', type=str, default='')
     # 是否使用混合精度训练(需要GPU支持混合精度)
     parser.add_argument("--amp", default=False, help="Use torch.cuda.amp for mixed precision training")
@@ -223,7 +221,7 @@ if __name__ == '__main__':
     # 预训练模型 E:\Dataset\pre_efficientnetv2-s.pth
     # r"/home/ubuntu/PreTrainWeights/torch_efficientnetv2/pre_efficientnetv2-m.pth"
     parser.add_argument('--weights', type=str,
-                        default="",
+                        default="/home/ubuntu/PreTrainWeights/ResNet/resnet50-19c8e357.pth",
                         help='initial weights path')
     # parser.add_argument('--freeze-layers', type=bool, default=False)
     parser.add_argument('--device', default='cuda:0', help='device id (i.e. 0 or 0,1 or cpu)')
