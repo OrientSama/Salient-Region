@@ -16,14 +16,6 @@ from utils import read_split_data, train_one_epoch, evaluate
 import datetime
 
 # TODO: 将代码重构 注释一下
-def save_weights(args, epoch, model):
-    if not os.path.exists(args.weights_path):
-        os.mkdir(args.weights_path)
-    torch.save(model.state_dict(), "./{}/{}-{}-model-{}.pth".format(args.weights_path, args.num_classes,
-                                                                    "NF" if args.weights == ""
-                                                                    else "F-" + args.weights.split('/')[-1].split('.')[0],
-                                                                    epoch))
-
 
 def main(args):
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
@@ -34,7 +26,6 @@ def main(args):
     formatted_date = now.strftime("%Y-%m-%d")
     formatted_time = now.strftime("%H-%M")
     fdt = formatted_date + '-' + formatted_time
-    # args.weights_path += '-' + fdt
     print('Start Tensorboard with "tensorboard --logdir {}", view at http://localhost:6006/'.format(fdt))
     comment = '_{}_{}'.format(args.num_classes, args.epochs)
     tb_writer = SummaryWriter(log_dir="{}".format(fdt), comment=comment)
@@ -212,7 +203,6 @@ if __name__ == '__main__':
                         help='start epoch')
     parser.add_argument('--resume', default='E:\PyCharm_Projects\Classification\Test3_Salient_Region\save_weights\model_1.pth',
                         help='resume from checkpoint')
-    parser.add_argument('--weights_path', type=str, default='')
     # 是否使用混合精度训练(需要GPU支持混合精度)
     parser.add_argument("--amp", default=False, help="Use torch.cuda.amp for mixed precision training")
 
