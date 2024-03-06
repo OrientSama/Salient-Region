@@ -45,7 +45,6 @@ def main(args):
                                    transforms.CenterCrop(img_size[num_model][1])]),
         "norm": transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])}
 
-
     # read class_indict
     json_path = './class_indices.json'
     assert os.path.exists(json_path), "file: '{}' dose not exist.".format(json_path)
@@ -54,7 +53,13 @@ def main(args):
         class_indices = json.load(f)
 
     multilabel = args.num_classes > 1
-    _, _, val_images_path, val_images_label, _, val_mask_images_path = utils.read_split_data(r"/home/ubuntu/Dataset/DOTA-Split-mmr", multilabel)
+    _, _, val_images_path, val_images_label, _, val_mask_images_path = utils.read_split_data(
+        r"E:\Dataset\DOTA-Classifier-1.5", multilabel)
+
+    # 保存中间文件
+
+    np.save('NumpyFiles/val_img_path.npy', np.array(val_images_path))
+    np.save('NumpyFiles/val_images_label.npy', np.array(val_images_label))
 
     # 实例化验证数据集
     val_dataset = MyDataSet(images_path=val_images_path,
@@ -76,8 +81,9 @@ def main(args):
     model_weight_path = args.weights
     # efficient net FPN
     # model = ModelWithFPN(num_classes=args.num_classes).to(device)
+    model = create_model(num_classes=args.num_classes).to(device)
     # resnet 50
-    model = resnet50(num_classes=args.num_classes).to(device)
+    # model = resnet50(num_classes=args.num_classes).to(device)
     # load model weights
     model.load_state_dict(torch.load(model_weight_path, map_location=device)['model'])
 
@@ -92,7 +98,7 @@ def main(args):
             images, labels, _ = data
             sample_num += images.shape[0]
 
-            pred = model(images.to(device))
+            pred, _ = model(images.to(device))
             # 存储 原始的预测数据， 之后计算 每一项 的最优 阈值
             # if multilabel:
             pred = m(pred)
@@ -107,6 +113,7 @@ def main(args):
 
     #  confusion matrix
     na = {0: 'Background', 1: 'Object', 'All': 'All'}
+    eps = 1E-5
 
     if multilabel:
         background = [0.0] * 15  # 15个0 代表 背景
@@ -117,7 +124,7 @@ def main(args):
         if args.threshold is None:
             for i in range(15):
                 precision, recall, thresholds = precision_recall_curve(labels[:, i], predicts[:, i])
-                F1 = 2 * precision * recall / (precision + recall)
+                F1 = 2 * precision * recall / (precision + recall + eps)
                 idx = F1.argmax()
                 best_thresholds.append(thresholds[idx])
         else:
@@ -141,7 +148,7 @@ def main(args):
         # FPR, recall, thresholds = roc_curve(labels_num, predicts)
         if args.threshold is None:
             precision, recall, thresholds = precision_recall_curve(labels_num, predicts)
-            F1 = 2 * precision * recall / (precision + recall)
+            F1 = 2 * precision * recall / (precision + recall + eps)
             idx = F1.argmax()
             # maxindex = (recall - FPR).argmax()
             best_threshold = thresholds[idx]
@@ -150,7 +157,6 @@ def main(args):
 
         # 保存 中间文件
         np.save('NumpyFiles/predicts.npy', predicts)
-        np.save('NumpyFiles/val_img_path.npy', np.array(val_images_path))
         with open('NumpyFiles/best_threshold.txt', 'w') as f:
             f.write('{}'.format(best_threshold))
 
@@ -160,7 +166,7 @@ def main(args):
     print(confusion_matrix)
 
     plt.figure(figsize=(8, 8), dpi=200)
-    sns.heatmap(confusion_matrix, annot=True, fmt='d', cmap='YlGnBu', annot_kws={'fontsize': 'small'})
+    sns.heatmap(confusion_matrix, annot=True, fmt='d', cmap='YlGnBu', annot_kws={'fontsize': 'medium'})
     plt.xticks(rotation=45, ha='right')
     plt.yticks(rotation=0, ha='right')
 
@@ -168,7 +174,7 @@ def main(args):
     plt.ylabel('True Value', fontsize=14)
     plt.xlabel('Predict Value', fontsize=14)
     # 保存 图片
-    plt.savefig(fname=model_weight_path.split('/')[-1].split('.')[0] + "-resnet50-{}Class-{}.png".format(args.num_classes, args.threshold),
+    plt.savefig(fname=model_weight_path.split('/')[-1].split('.')[0] + "-{}Class-{}.png".format(args.num_classes, args.threshold),
                 bbox_inches='tight')
     # plt.show()
 
@@ -177,7 +183,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--num_classes', type=int, default=1)
     parser.add_argument('--weights', type=str,
-                        default=r"/home/ubuntu/PycharmProjects/DeepLearn/Test3_Salient_Region/save_weights/resnet50_model_35.pth",
+                        default=r"E:\PyCharm_Projects\Classification\Test3_Salient_Region\save_weights\efficient_model_130.pth",
                         help='initial weights path')
     parser.add_argument('--size', type=str,
                         default="m",

@@ -15,7 +15,7 @@ from my_dataset import MyDataSet
 from utils import read_split_data, train_one_epoch, evaluate
 import datetime
 
-
+# TODO: 将代码重构 注释一下
 def save_weights(args, epoch, model):
     if not os.path.exists(args.weights_path):
         os.mkdir(args.weights_path)
@@ -32,12 +32,12 @@ def main(args):
     now = datetime.datetime.now()
     # 格式化日期和时间
     formatted_date = now.strftime("%Y-%m-%d")
-    formatted_time = now.strftime("%H:%M")
+    formatted_time = now.strftime("%H-%M")
     fdt = formatted_date + '-' + formatted_time
     # args.weights_path += '-' + fdt
     print('Start Tensorboard with "tensorboard --logdir {}", view at http://localhost:6006/'.format(fdt))
     comment = '_{}_{}'.format(args.num_classes, args.epochs)
-    tb_writer = SummaryWriter(log_dir="./{}".format(fdt), comment=comment)
+    tb_writer = SummaryWriter(log_dir="{}".format(fdt), comment=comment)
     if os.path.exists("./weights") is False:
         os.makedirs("./weights")
 
@@ -90,30 +90,35 @@ def main(args):
                                              collate_fn=val_dataset.collate_fn)
 
     # 如果存在预训练权重则载入
-    # model = create_model(num_classes=args.num_classes).to(device)
+    model = create_model(num_classes=args.num_classes).to(device)
     # model with FPN
     # model = ModelWithFPN(num_classes=args.num_classes).to(device)
-    # ResNet50
-    model = resnet50(num_classes=args.num_classes).to(device)
+    # # ResNet50
+    # model = resnet50(num_classes=args.num_classes).to(device)
 
     # 最多训练 head 和 block 的后10层
     # li = [str(n) for n in range(3, 57)] + ['head']
 
-    block_para = [v for k, v in model.named_parameters() if 'fc' not in k]
+    # efficientnet
+    block_para = [v for k, v in model.named_parameters() if 'head' not in k]
+
+    # resnet50
+    # block_para = [v for k, v in model.named_parameters() if 'fc' not in k]
 
     # 分层控制学习率
     # optimizer = optim.AdamW([{'params': basepara}, {'params': headpara, 'lr': args.lr * 10}], lr=args.lr, weight_decay=1e-4)
     # optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=1e-4, momentum=0.9)
-    optimizer = optim.SGD([{'params': model.fc.parameters(), 'lr': args.lr * 10}, {'params': block_para}], lr=args.lr, weight_decay=1e-4,
+    optimizer = optim.SGD([{'params': model.head.parameters(), 'lr': args.lr * 10}, {'params': block_para}], lr=args.lr, weight_decay=1e-4,
                           momentum=0.9)
     scaler = torch.cuda.amp.GradScaler() if opt.amp else None
 
     if args.weights != "":
+        # FIXME: 因为添加了FPN，导致目前无法加载别人预训练的参数
         if os.path.exists(args.weights):
-            weights_dict = torch.load(args.weights, map_location='cpu')
-            load_weights_dict = {k: v for k, v in weights_dict.items()
-                                 if model.state_dict()[k].numel() == v.numel()}
-            print(model.load_state_dict(load_weights_dict, strict=False))
+            weights_dict = torch.load(args.weights, map_location=device)['model']
+            # load_weights_dict = {k: v for k, v in weights_dict.items()
+            #                      if model.state_dict()[k].numel() == v.numel()}
+            print(model.load_state_dict(weights_dict, strict=False))
             if opt.amp and "scaler" in weights_dict:
                 scaler.load_state_dict(weights_dict["scaler"])
         else:
@@ -157,7 +162,7 @@ def main(args):
     #         print("training {}".format(name))
 
     if args.resume:
-        checkpoint = torch.load(args.resume, map_location='cpu')
+        checkpoint = torch.load(args.resume, map_location=device)
         model.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         scheduler.load_state_dict(checkpoint['lr_scheduler'])
@@ -192,20 +197,20 @@ def main(args):
         tb_writer.add_scalars(tags[0], {'Train': train_loss}, epoch)
         tb_writer.add_scalars(tags[1], {'Train': train_acc}, epoch)
         tb_writer.add_scalar(tags[2], optimizer.param_groups[0]["lr"], epoch)
-        torch.save(save_file, f"save_weights/model_{epoch}.pth")
+        torch.save(save_file, f"save_weights/efficient_model_{epoch}.pth")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--num_classes', type=int, default=1)
-    parser.add_argument('--epochs', type=int, default=100)
-    parser.add_argument('--batch-size', type=int, default=32)
-    parser.add_argument('--lr', type=float, default=0.002)
+    parser.add_argument('--epochs', type=int, default=250)
+    parser.add_argument('--batch-size', type=int, default=16)
+    parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--lrf', type=float, default=0.01)
     parser.add_argument("--eval-interval", default=5, type=int, help="validation interval default 10 Epochs")
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='start epoch')
-    parser.add_argument('--resume', default='/home/ubuntu/PycharmProjects/DeepLearn/Test3_Salient_Region/save_weights/model_1.pth',
+    parser.add_argument('--resume', default='E:\PyCharm_Projects\Classification\Test3_Salient_Region\save_weights\model_1.pth',
                         help='resume from checkpoint')
     parser.add_argument('--weights_path', type=str, default='')
     # 是否使用混合精度训练(需要GPU支持混合精度)
@@ -214,14 +219,15 @@ if __name__ == '__main__':
     # 数据集所在根目录
     # https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz
     parser.add_argument('--data-path', type=str,
-                        default=r"/home/ubuntu/Dataset/DOTA-Split-mmr")
+                        default=r"E:\Dataset\DOTA-Classifier-1.5")
 
     # download model weights
     # 链接: https://pan.baidu.com/s/1uZX36rvrfEss-JGj4yfzbQ  密码: 5gu1
     # 预训练模型 E:\Dataset\pre_efficientnetv2-s.pth
     # r"/home/ubuntu/PreTrainWeights/torch_efficientnetv2/pre_efficientnetv2-m.pth"
+    # resnet50 /home/ubuntu/PreTrainWeights/ResNet/resnet50-19c8e357.pth
     parser.add_argument('--weights', type=str,
-                        default="/home/ubuntu/PreTrainWeights/ResNet/resnet50-19c8e357.pth",
+                        default=r"",
                         help='initial weights path')
     # parser.add_argument('--freeze-layers', type=bool, default=False)
     parser.add_argument('--device', default='cuda:0', help='device id (i.e. 0 or 0,1 or cpu)')

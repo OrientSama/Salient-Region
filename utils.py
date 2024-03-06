@@ -175,12 +175,16 @@ def warmup_lr_scheduler(optimizer, warmup_iters, warmup_factor):
     return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=f)
 
 
-def train_one_epoch(model, optimizer, data_loader, device, epoch, warmup, multilabel, scaler):
-    model.train()
+def train_one_epoch(model, optimizer, data_loader, device, epoch, warmup, multilabel, scaler, isTrain):
+    if isTrain:
+        model.train()
+    else:
+        model.eval()
     # if multilabel:
     loss_function = torch.nn.BCEWithLogitsLoss()
     focal_loss = FocalLoss(loss_function)
     m = torch.nn.Sigmoid()
+    b = torch.ones(1, device=device) * 0.03
 
     accu_loss = torch.zeros(1).to(device)  # 累计损失
     accu_num = torch.zeros(1).to(device)  # 累计预测正确的样本数
@@ -201,14 +205,18 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, warmup, multil
         with amp.autocast(enabled=scaler is not None):
             # model with FPN
             # pred, output = model(images.to(device))
+
+            # efficientnet
+            pred, _ = model(images.to(device))
             # resnet50
-            pred = model(images.to(device))
+            # pred = model(images.to(device))
             # if multilabel:
             m_pred = m(pred)
             pred_classes = torch.round(m_pred)
             if not multilabel:
                 labels = labels.unsqueeze(dim=1)
-            loss = focal_loss(pred, labels.to(device))  # + loss_function(output, masks.to(device)).sum() / output.size(0)
+            # flooding    https://arxiv.org/pdf/2002.08709.pdf
+            loss = torch.abs_(focal_loss(pred, labels.to(device)) - b) + b  # + loss_function(output, masks.to(device)).sum() / output.size(0)
         accu_num += torch.eq(pred_classes, labels.to(device)).sum()
 
         # backward
@@ -256,7 +264,7 @@ def evaluate(model, data_loader, device, epoch, multilabel):
         # model with FPN
         # pred, output = model(images.to(device))
         # resnet50
-        pred = model(images.to(device))
+        pred, _ = model(images.to(device))
         m_pred = m(pred)
         pred_classes = torch.round(m_pred)
         if not multilabel:

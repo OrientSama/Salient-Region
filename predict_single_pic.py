@@ -18,12 +18,12 @@ def main():
          transforms.ToTensor(),
          transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])])
 
-    model_weight_path = "/home/ubuntu/PycharmProjects/DeepLearn/Test3_Salient_Region/save_weights/model_189.pth"
+    model_weight_path = "/home/ubuntu/PycharmProjects/DeepLearn/Test3_Salient_Region/save_weights/last_model_180_best.pth"
     model = ModelWithFPN(num_classes=num_classes).to(device)
     model.load_state_dict(torch.load(model_weight_path, map_location=device)['model'])
     m = torch.nn.Sigmoid()
-    pic_path = "/home/ubuntu/Dataset/DOTA-Split-mmr/val/images/P0007__1024__466___1113.png"
-    mask_path = "/home/ubuntu/Dataset/DOTA-Split-mmr/val/mask_images/P0007__1024__466___1113.jpg"
+    pic_path = "/home/ubuntu/Dataset/DOTA-Split-mmr/val/images/P0179__1024__824___0.png"
+    mask_path = "/home/ubuntu/Dataset/DOTA-Split-mmr/val/mask_images/P0179__1024__824___0.jpg"
     img = Image.open(pic_path)
     mask_img = Image.open(mask_path)
     plt.figure(figsize=(9, 3))
