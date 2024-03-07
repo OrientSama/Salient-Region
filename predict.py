@@ -26,7 +26,7 @@ def main(args):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     dota_class = ['plane', 'baseball-diamond', 'bridge', 'ground-track-field', 'small-vehicle', 'large-vehicle', 'ship',
                   'tennis-court', 'basketball-court', 'storage-tank', 'soccer-ball-field', 'roundabout', 'harbor',
-                  'swimming-pool', 'helicopter', 'background']
+                  'swimming-pool', 'helicopter', 'container-crane', 'background']
     dota_class.sort()
     dota_class.insert(0, 'None')
     name_dict = dict((k, v) for k, v in enumerate(dota_class))
@@ -116,19 +116,19 @@ def main(args):
     eps = 1E-5
 
     if multilabel:
-        background = [0.0] * 15  # 15个0 代表 背景
+        background = [0.0] * 16  # 16个0 代表 背景
         # predicts [4055, 15] torch cuda:0
         best_thresholds = []
         predicts = predicts.cpu().numpy()
         labels = np.array(val_images_label)  # 转化为 np
         if args.threshold is None:
-            for i in range(15):
+            for i in range(16):
                 precision, recall, thresholds = precision_recall_curve(labels[:, i], predicts[:, i])
                 F1 = 2 * precision * recall / (precision + recall + eps)
                 idx = F1.argmax()
                 best_thresholds.append(thresholds[idx])
         else:
-            best_thresholds = [args.threshold] * 15
+            best_thresholds = [args.threshold] * 16
 
             # FPR, recall, thresholds = roc_curve(labels[:, i], predicts[:, i])
             # maxindex = (recall - FPR).argmax()
@@ -139,6 +139,8 @@ def main(args):
         predicts_num = [int(pred != background) for pred in predicts_num.tolist()]
         # 0 background   1 objects
         labels_num, predicts_num = np.array(labels_num), np.array(predicts_num)  # 转化成np格式
+        # 保存 中间文件
+        np.save('NumpyFiles/predicts_num.npy', predicts_num)
         confusion_matrix = pd.crosstab(labels_num.flatten(), predicts_num.flatten(), margins=True)
         confusion_matrix.rename(index=na, columns=na, inplace=True)
     else:
@@ -155,12 +157,9 @@ def main(args):
         else:
             best_threshold = args.threshold
 
-        # 保存 中间文件
-        np.save('NumpyFiles/predicts.npy', predicts)
-        with open('NumpyFiles/best_threshold.txt', 'w') as f:
-            f.write('{}'.format(best_threshold))
-
         predicts_num = (predicts > best_threshold).astype(float)
+        # 保存 中间文件
+        np.save('NumpyFiles/predicts_num.npy', predicts_num)
         confusion_matrix = pd.crosstab(labels_num.flatten(), predicts_num.flatten(), margins=True)
         confusion_matrix.rename(index=na, columns=na, inplace=True)
     print(confusion_matrix)
@@ -181,9 +180,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_classes', type=int, default=1)
+    parser.add_argument('--num_classes', type=int, default=16)
     parser.add_argument('--weights', type=str,
-                        default=r"E:\PyCharm_Projects\Classification\Test3_Salient_Region\save_weights\efficient_model_130.pth",
+                        default=r"E:\PyCharm_Projects\Classification\Test_Salient_Region\save_weights\efficient_180_16c.pth",
                         help='initial weights path')
     parser.add_argument('--size', type=str,
                         default="m",

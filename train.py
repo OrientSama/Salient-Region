@@ -193,7 +193,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_classes', type=int, default=1)
+    parser.add_argument('--num_classes', type=int, default=16, help="1 or 16 for DOTA1.5")
     parser.add_argument('--epochs', type=int, default=250)
     parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--lr', type=float, default=0.001)
@@ -201,7 +201,7 @@ if __name__ == '__main__':
     parser.add_argument("--eval-interval", default=5, type=int, help="validation interval default 10 Epochs")
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='start epoch')
-    parser.add_argument('--resume', default='E:\PyCharm_Projects\Classification\Test3_Salient_Region\save_weights\model_1.pth',
+    parser.add_argument('--resume', default='',
                         help='resume from checkpoint')
     # 是否使用混合精度训练(需要GPU支持混合精度)
     parser.add_argument("--amp", default=False, help="Use torch.cuda.amp for mixed precision training")

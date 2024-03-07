@@ -5,6 +5,7 @@
 - gen_mask.py：生成遮罩图片，用于训练分割分支
 - notDetectionPicture.py:将FP/FN图片复制到单独的文件夹中
 - processImg.py:将没有检测到目标的图片变成黑图
+- ExtractImg.py:将不是GoogleEarth的图片屏蔽
 ***
 ### 主目录下内容
 - model.py:模型文件

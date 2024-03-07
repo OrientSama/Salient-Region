@@ -47,7 +47,7 @@ def read_label(root: str, class_indices: dict, multilabel: bool):
     if multilabel:
         for i in label_txt:
             with open(i, "r") as f:
-                label = [0.0] * 15
+                label = [0.0] * 16
                 data = f.readlines()
                 if len(data) != 0:
                     tmp = set()
@@ -83,7 +83,7 @@ def read_split_data(root: str, multilabel: bool):
 
     dota_class = ['plane', 'baseball-diamond', 'bridge', 'ground-track-field', 'small-vehicle', 'large-vehicle', 'ship',
                   'tennis-court', 'basketball-court', 'storage-tank', 'soccer-ball-field', 'roundabout', 'harbor',
-                  'swimming-pool', 'helicopter']
+                  'swimming-pool', 'helicopter', 'container-crane']
     dota_class.sort()
     class_indices = dict((k, v) for v, k in enumerate(dota_class))
     json_str = json.dumps(dict((val, key) for key, val in class_indices.items()), indent=4)
@@ -175,11 +175,8 @@ def warmup_lr_scheduler(optimizer, warmup_iters, warmup_factor):
     return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=f)
 
 
-def train_one_epoch(model, optimizer, data_loader, device, epoch, warmup, multilabel, scaler, isTrain):
-    if isTrain:
-        model.train()
-    else:
-        model.eval()
+def train_one_epoch(model, optimizer, data_loader, device, epoch, warmup, multilabel, scaler):
+    model.train()
     # if multilabel:
     loss_function = torch.nn.BCEWithLogitsLoss()
     focal_loss = FocalLoss(loss_function)
