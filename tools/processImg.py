@@ -4,6 +4,8 @@ import numpy as np
 from multiprocessing import Pool
 from functools import partial
 
+# 此文件利用predict.py 产生的结果，将识别为有目标的图片复制到pred文件夹下
+# 将没有目标的图片则生成黑图到pred文件夹下
 
 def single_img(x, save_path, bg):
     img_path, is_obj = x

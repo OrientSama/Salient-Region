@@ -80,8 +80,8 @@ def main(args):
     # create model
     model_weight_path = args.weights
     # efficient net FPN
-    # model = ModelWithFPN(num_classes=args.num_classes).to(device)
-    model = create_model(num_classes=args.num_classes).to(device)
+    model = ModelWithFPN(num_classes=args.num_classes).to(device)
+    # model = create_model(num_classes=args.num_classes).to(device)
     # resnet 50
     # model = resnet50(num_classes=args.num_classes).to(device)
     # load model weights
@@ -180,9 +180,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_classes', type=int, default=16)
+    parser.add_argument('--num_classes', type=int, default=1)
     parser.add_argument('--weights', type=str,
-                        default=r"E:\PyCharm_Projects\Classification\Test_Salient_Region\save_weights\efficient_180_16c.pth",
+                        default=r"E:\PyCharm_Projects\Classification\Test_Salient_Region\save_weights\efficient_with_SOD_190.pth",
                         help='initial weights path')
     parser.add_argument('--size', type=str,
                         default="m",

@@ -64,7 +64,7 @@ def main(args):
                             norm=data_transform["norm"])
 
     batch_size = args.batch_size
-    nw = min([os.cpu_count(), batch_size if batch_size > 1 else 0, 20])  # number of workers
+    nw = min([os.cpu_count(), batch_size if batch_size > 1 else 0, 16])  # number of workers
     print('Using {} dataloader workers every process'.format(nw))
     train_loader = torch.utils.data.DataLoader(train_dataset,
                                                batch_size=batch_size,
@@ -81,9 +81,9 @@ def main(args):
                                              collate_fn=val_dataset.collate_fn)
 
     # 如果存在预训练权重则载入
-    model = create_model(num_classes=args.num_classes).to(device)
+    # model = create_model(num_classes=args.num_classes).to(device)
     # model with FPN
-    # model = ModelWithFPN(num_classes=args.num_classes).to(device)
+    model = ModelWithFPN(num_classes=args.num_classes).to(device)
     # # ResNet50
     # model = resnet50(num_classes=args.num_classes).to(device)
 
@@ -91,16 +91,16 @@ def main(args):
     # li = [str(n) for n in range(3, 57)] + ['head']
 
     # efficientnet
-    block_para = [v for k, v in model.named_parameters() if 'head' not in k]
+    # block_para = [v for k, v in model.named_parameters() if 'fc' not in k]
 
     # resnet50
     # block_para = [v for k, v in model.named_parameters() if 'fc' not in k]
 
     # 分层控制学习率
     # optimizer = optim.AdamW([{'params': basepara}, {'params': headpara, 'lr': args.lr * 10}], lr=args.lr, weight_decay=1e-4)
-    # optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=1e-4, momentum=0.9)
-    optimizer = optim.SGD([{'params': model.head.parameters(), 'lr': args.lr * 10}, {'params': block_para}], lr=args.lr, weight_decay=1e-4,
-                          momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=1e-4, momentum=0.9)
+    # optimizer = optim.SGD([{'params': model.fc.parameters(), 'lr': args.lr * 10}, {'params': block_para}], lr=args.lr, weight_decay=1e-4,
+    #                       momentum=0.9)
     scaler = torch.cuda.amp.GradScaler() if opt.amp else None
 
     if args.weights != "":
@@ -188,13 +188,13 @@ def main(args):
         tb_writer.add_scalars(tags[0], {'Train': train_loss}, epoch)
         tb_writer.add_scalars(tags[1], {'Train': train_acc}, epoch)
         tb_writer.add_scalar(tags[2], optimizer.param_groups[0]["lr"], epoch)
-        torch.save(save_file, f"save_weights/efficient_model_{epoch}.pth")
+        torch.save(save_file, f"save_weights/resnet50withFPN_1c_{epoch}.pth")
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_classes', type=int, default=16, help="1 or 16 for DOTA1.5")
-    parser.add_argument('--epochs', type=int, default=250)
+    parser.add_argument('--num_classes', type=int, default=1, help="1 or 16 for DOTA1.5")
+    parser.add_argument('--epochs', type=int, default=200)
     parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--lrf', type=float, default=0.01)

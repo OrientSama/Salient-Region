@@ -7,8 +7,10 @@ from functools import partial
 def rmSingle(x, path):
     ann_path, is_obj = x
     if not is_obj:
+        img_path = ann_path.replace('val\\images', 'pred')
         real_path = os.path.join(path, ann_path.replace(".png", ".txt").split('\\')[-1])
         try:
+            os.remove(img_path)
             os.remove(real_path)
         except FileNotFoundError:
             pass

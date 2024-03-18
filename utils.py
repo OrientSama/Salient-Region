@@ -9,7 +9,6 @@ from torch.cuda import amp
 import matplotlib.pyplot as plt
 
 
-
 class FocalLoss(nn.Module):
     # Wraps focal loss around existing loss_fcn(), i.e. criteria = FocalLoss(nn.BCEWithLogitsLoss(), gamma=1.5)
     def __init__(self, loss_fcn, gamma=1.5, alpha=0.25):
@@ -94,25 +93,23 @@ def read_split_data(root: str, multilabel: bool):
     # 遍历每个文件夹下的文件
     train_img_path = os.path.join(train_path, "images")
     train_label_path = os.path.join(train_path, "annfiles")
-    train_images_path = [os.path.join(train_img_path, i) for i in os.listdir(train_img_path)]   # 存储训练集的所有图片路径
+    train_images_path = [os.path.join(train_img_path, i) for i in os.listdir(train_img_path)]  # 存储训练集的所有图片路径
     train_images_path.sort()
-    train_images_label = read_label(train_label_path, class_indices, multilabel)                # 存储训练集图片对应索引信息
+    train_images_label = read_label(train_label_path, class_indices, multilabel)  # 存储训练集图片对应索引信息
 
     val_img_path = os.path.join(val_path, "images")
     val_label_path = os.path.join(val_path, "annfiles")
-    val_images_path = [os.path.join(val_img_path, i) for i in os.listdir(val_img_path)]         # 存储验证集的所有图片路径
+    val_images_path = [os.path.join(val_img_path, i) for i in os.listdir(val_img_path)]  # 存储验证集的所有图片路径
     val_images_path.sort()
-    val_images_label = read_label(val_label_path, class_indices, multilabel)                    # 存储验证集图片对应索引信息
+    val_images_label = read_label(val_label_path, class_indices, multilabel)  # 存储验证集图片对应索引信息
 
-    train_mask_img_path = os.path.join(train_path, "mask_images")   # mask
+    train_mask_img_path = os.path.join(train_path, "mask_images")  # mask
     train_mask_images_path = [os.path.join(train_mask_img_path, i) for i in os.listdir(train_mask_img_path)]
     train_mask_images_path.sort()
 
     val_mask_img_path = os.path.join(val_path, "mask_images")
     val_mask_images_path = [os.path.join(val_mask_img_path, i) for i in os.listdir(val_mask_img_path)]
     val_mask_images_path.sort()
-
-
 
     # print("{} images were found in the dataset.".format(sum(every_class_num)))
     print("{} images for training.".format(len(train_images_path)))
@@ -201,10 +198,10 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, warmup, multil
         # 混合精度训练上下文管理器，如果在CPU环境中不起任何作用
         with amp.autocast(enabled=scaler is not None):
             # model with FPN
-            # pred, output = model(images.to(device))
+            pred, output = model(images.to(device))
 
             # efficientnet
-            pred, _ = model(images.to(device))
+            # pred, _ = model(images.to(device))
             # resnet50
             # pred = model(images.to(device))
             # if multilabel:
@@ -213,7 +210,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, warmup, multil
             if not multilabel:
                 labels = labels.unsqueeze(dim=1)
             # flooding    https://arxiv.org/pdf/2002.08709.pdf
-            loss = torch.abs_(focal_loss(pred, labels.to(device)) - b) + b  # + loss_function(output, masks.to(device)).sum() / output.size(0)
+            loss = torch.abs_(focal_loss(pred, labels.to(device)) - b) + b + 0.05 * loss_function(output, masks.to(device)).sum() / output.size(0)
         accu_num += torch.eq(pred_classes, labels.to(device)).sum()
 
         # backward
@@ -259,14 +256,14 @@ def evaluate(model, data_loader, device, epoch, multilabel):
         sample_num += images.shape[0]
 
         # model with FPN
-        # pred, output = model(images.to(device))
+        pred, output = model(images.to(device))
         # resnet50
-        pred, _ = model(images.to(device))
+        # pred = model(images.to(device))
         m_pred = m(pred)
         pred_classes = torch.round(m_pred)
         if not multilabel:
             labels = labels.unsqueeze(dim=1)
-        loss = focal_loss(pred, labels.to(device))  # + loss_function(output, masks.to(device)).sum() / output.size(0)
+        loss = focal_loss(pred, labels.to(device)) + 0.05 * loss_function(output, masks.to(device)).sum() / output.size(0)
         accu_num += torch.eq(pred_classes, labels.to(device)).sum()
         accu_loss += loss.detach()
 

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from model import efficientnetv2_m as create_model
+from resnet import resnet50
 
 
 class ModelWithFPN(nn.Module):
@@ -9,6 +10,7 @@ class ModelWithFPN(nn.Module):
     def __init__(self, num_classes: int = 1000):
         super().__init__()
         self.model = create_model(num_classes=num_classes)
+        # self.model = resnet50(num_classes=num_classes)
         # FIXME 直接使用倍率放大，对于某些尺寸的图片 会导致出错， 目前512, 1024 可以， 600报错
         self.conv_up_4 = nn.Sequential(nn.Conv2d(304, 160, kernel_size=1, bias=False),
                                        nn.BatchNorm2d(num_features=160, eps=1e-3, momentum=0.1),
@@ -19,6 +21,15 @@ class ModelWithFPN(nn.Module):
         self.conv_up_2 = nn.Sequential(nn.Conv2d(80, 48, kernel_size=1, bias=False),
                                        nn.BatchNorm2d(num_features=48, eps=1e-3, momentum=0.1),
                                        nn.Upsample(scale_factor=2, mode='bilinear'))  # 48 128 128
+        # self.conv_up_4 = nn.Sequential(nn.Conv2d(512*4, 256*4, kernel_size=1, bias=False),
+        #                                nn.BatchNorm2d(num_features=256*4, eps=1e-3, momentum=0.1),
+        #                                nn.Upsample(scale_factor=2, mode='bilinear'))  # 160 32 32
+        # self.conv_up_3 = nn.Sequential(nn.Conv2d(256*4, 128*4, kernel_size=1, bias=False),
+        #                                nn.BatchNorm2d(num_features=128*4, eps=1e-3, momentum=0.1),
+        #                                nn.Upsample(scale_factor=2, mode='bilinear'))  # 80 64 64
+        # self.conv_up_2 = nn.Sequential(nn.Conv2d(128*4, 64*4, kernel_size=1, bias=False),
+        #                                nn.BatchNorm2d(num_features=64*4, eps=1e-3, momentum=0.1),
+        #                                nn.Upsample(scale_factor=2, mode='bilinear'))  # 48 128 128
 
         self.SODnet = nn.Sequential(
             nn.ConvTranspose2d(48, 64, kernel_size=4, stride=2, padding=1),
